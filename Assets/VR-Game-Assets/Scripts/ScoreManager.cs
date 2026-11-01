@@ -51,12 +51,24 @@ public class ScoreManager : MonoBehaviour
     public int lobbySceneIndex = 0;
 
     [Header("Tornar a jugar")]
-    // En acabar la partida, A (dreta) o X (esquerra) reinicien sense haver de clicar la UI.
+    // En acabar la partida: A (dreta) o X (esquerra) tornen a jugar,
+    // B (dreta) o Y (esquerra) tornen al lobby.
     public bool restartWithControllerButton = true;
     public OVRInput.Button restartButtonRight = OVRInput.Button.One;
     public OVRInput.Button restartButtonLeft = OVRInput.Button.Three;
-    // Si és cert, el botó torna al lobby en lloc de reiniciar la partida.
+    public OVRInput.Button lobbyButtonRight = OVRInput.Button.Two;
+    public OVRInput.Button lobbyButtonLeft = OVRInput.Button.Four;
+    // Si és cert, el botó A/X també torna al lobby en lloc de reiniciar la partida.
     public bool restartGoesToLobby = false;
+
+    [Header("Botons del panell final")]
+    // Es creen sols copiant el BackButton del panell. Es premen disparant-los.
+    public bool createEndButtons = true;
+    public string playAgainLabel = "TORNAR A JUGAR (A)";
+    public string lobbyLabel = "TORNAR AL LOBBY (B)";
+    public string endHintText = "Dispara a un botó o prem A / B";
+    // Separació horitzontal entre els dos botons (unitats del Canvas).
+    public float endButtonsSpacing = 230f;
     // Segons d'espera abans d'acceptar el botó, per no reiniciar sense voler.
     public float restartDelay = 1.5f;
 
@@ -257,6 +269,10 @@ public class ScoreManager : MonoBehaviour
             else
                 RestartGame();
         }
+        else if (OVRInput.GetDown(lobbyButtonRight) || OVRInput.GetDown(lobbyButtonLeft))
+        {
+            BackToLobby();
+        }
     }
 
     private void EndGame()
@@ -296,10 +312,98 @@ public class ScoreManager : MonoBehaviour
         }
 
         if (finalPanel != null)
+        {
             finalPanel.SetActive(true);
+
+            if (createEndButtons)
+                CreateEndButtons();
+        }
 
         if (debugLogs)
             Debug.Log("[Score] Fi de la partida. Score " + score + ", high score " + highScore);
+    }
+
+    // Crea "Tornar a jugar" i "Tornar al lobby" a sota de la puntuació,
+    // fent servir el BackButton del panell com a plantilla (mateix estil).
+    private void CreateEndButtons()
+    {
+        Transform template = finalPanel.transform.Find("BackButton");
+
+        if (template == null)
+        {
+            Debug.LogWarning("[Score] No trobo el BackButton dins del panell final per fer els botons.");
+            return;
+        }
+
+        RectTransform templateRect = (RectTransform)template;
+        Vector2 basePosition = templateRect.anchoredPosition;
+
+        CreateEndButton(template, "PlayAgainButton", playAgainLabel,
+            basePosition + new Vector2(-endButtonsSpacing, 0f), RestartGame);
+        CreateEndButton(template, "LobbyButton", lobbyLabel,
+            basePosition + new Vector2(endButtonsSpacing, 0f), BackToLobby);
+
+        // Text d'ajuda a sota dels botons.
+        if (!string.IsNullOrEmpty(endHintText))
+        {
+            GameObject hint = new GameObject("EndHint", typeof(RectTransform));
+            hint.layer = finalPanel.layer;
+            hint.transform.SetParent(finalPanel.transform, false);
+
+            RectTransform hintRect = (RectTransform)hint.transform;
+            hintRect.anchorMin = templateRect.anchorMin;
+            hintRect.anchorMax = templateRect.anchorMax;
+            hintRect.pivot = new Vector2(0.5f, 0.5f);
+            hintRect.sizeDelta = new Vector2(1000f, 50f);
+            hintRect.anchoredPosition = basePosition + new Vector2(0f, -templateRect.sizeDelta.y * templateRect.localScale.y * 0.5f - 40f);
+
+            TextMeshProUGUI hintText = hint.AddComponent<TextMeshProUGUI>();
+            hintText.text = endHintText;
+            hintText.fontSize = 30f;
+            hintText.alignment = TextAlignmentOptions.Center;
+            hintText.color = new Color(1f, 1f, 1f, 0.85f);
+        }
+    }
+
+    private void CreateEndButton(Transform template, string objectName, string label, Vector2 position,
+        UnityEngine.Events.UnityAction action)
+    {
+        GameObject copy = Instantiate(template.gameObject, template.parent, false);
+        copy.name = objectName;
+        copy.SetActive(true);
+
+        RectTransform rect = (RectTransform)copy.transform;
+        rect.anchoredPosition = position;
+
+        // La plantilla portava "BackToLobby" connectat: el traiem i posem l'acció nova.
+        Button button = copy.GetComponent<Button>();
+
+        if (button != null)
+        {
+            button.onClick = new Button.ButtonClickedEvent();
+            button.onClick.AddListener(action);
+        }
+
+        TMP_Text text = copy.GetComponentInChildren<TMP_Text>(true);
+
+        if (text != null)
+        {
+            text.text = label;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 6f;
+            text.fontSizeMax = Mathf.Max(text.fontSize, 14f);
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+        }
+
+        // Collider perquè el tret de la pistola el pugui tocar.
+        BoxCollider box = copy.AddComponent<BoxCollider>();
+        box.isTrigger = true;
+        box.size = new Vector3(rect.rect.width, rect.rect.height, 20f);
+        box.center = new Vector3((0.5f - rect.pivot.x) * rect.rect.width, (0.5f - rect.pivot.y) * rect.rect.height, 0f);
+
+        ShootableButton shootable = copy.AddComponent<ShootableButton>();
+        shootable.button = button;
+        shootable.activeAfter = Time.time + restartDelay;
     }
 
     // Torna a carregar la GameScene des de zero.

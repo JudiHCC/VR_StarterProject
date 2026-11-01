@@ -22,15 +22,16 @@ public class PistolShooter : MonoBehaviour
     [Header("Ajuda a apuntar")]
     // Radi del "tub" al voltant del raig on també es compta com a impacte (metres).
     // 0 = només el raig exacte.
-    public float aimAssistRadius = 0.06f;
+    public float aimAssistRadius = 0.03f;
 
-    [Header("Mira")]
-    // Línia fina que mostra on apuntes; es torna verda si apuntes a un GunCube.
-    public bool showAimLine = true;
-    public float aimLineWidth = 0.004f;
-    public float aimLineLength = 15f;
-    public Color aimLineColor = new Color(1f, 0.2f, 0.2f, 0.25f);
-    public Color aimLineOnTargetColor = new Color(0.2f, 1f, 0.3f, 0.6f);
+    [Header("Mirilla")]
+    // Petit cercle a poca distància del canó per apuntar.
+    // No mostra la trajectòria ni avisa si apuntes a un cub.
+    public bool showCrosshair = true;
+    public float crosshairDistance = 1.2f;
+    public float crosshairRadius = 0.015f;
+    public float crosshairWidth = 0.0025f;
+    public Color crosshairColor = new Color(1f, 1f, 1f, 0.8f);
 
     [Header("Vibració")]
     // Vibració curta quan falles (quan encertes, PistolHandGrab ja fa la vibració forta).
@@ -40,7 +41,7 @@ public class PistolShooter : MonoBehaviour
     public bool debugLogs = true;
 
     private LineRenderer laser;
-    private LineRenderer aimLine;
+    private Transform crosshair;
     private PistolHandGrab pistolGrab;
     private Transform playerRoot;
 
@@ -75,7 +76,7 @@ public class PistolShooter : MonoBehaviour
             laserMaterial = new Material(Shader.Find("Sprites/Default"));
 
         laser = CreateLine("Laser", laserWidth, laserColor);
-        aimLine = CreateLine("AimLine", aimLineWidth, aimLineColor);
+        CreateCrosshair();
     }
 
     private void Start()
@@ -106,6 +107,38 @@ public class PistolShooter : MonoBehaviour
         line.enabled = false;
 
         return line;
+    }
+
+    // Cercle + punt central, dibuixats amb LineRenderer en coordenades locals.
+    private void CreateCrosshair()
+    {
+        // Sense pare: així l'escala de la pistola no deforma el cercle.
+        crosshair = new GameObject("PistolCrosshair").transform;
+
+        const int segments = 24;
+        LineRenderer ring = CreateLine("Ring", crosshairWidth, crosshairColor);
+        ring.transform.SetParent(crosshair, false);
+        ring.useWorldSpace = false;
+        ring.loop = true;
+        ring.alignment = LineAlignment.TransformZ;
+        ring.positionCount = segments;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float a = i * Mathf.PI * 2f / segments;
+            ring.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * crosshairRadius);
+        }
+
+        LineRenderer dot = CreateLine("Dot", crosshairWidth * 1.4f, crosshairColor);
+        dot.transform.SetParent(crosshair, false);
+        dot.useWorldSpace = false;
+        dot.alignment = LineAlignment.TransformZ;
+        dot.SetPosition(0, new Vector3(-crosshairWidth * 0.7f, 0f, 0f));
+        dot.SetPosition(1, new Vector3(crosshairWidth * 0.7f, 0f, 0f));
+
+        ring.enabled = true;
+        dot.enabled = true;
+        crosshair.gameObject.SetActive(false);
     }
 
     private Vector3 LaserDirection()
@@ -203,6 +236,35 @@ public class PistolShooter : MonoBehaviour
         return null;
     }
 
+    // Primer botó de la UI al llarg del raig (abans de cap paret).
+    private ShootableButton FindButton(Vector3 start, Vector3 direction, out float distance)
+    {
+        distance = maxDistance;
+
+        RaycastHit[] hits = Physics.RaycastAll(start, direction, maxDistance,
+            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (IsIgnored(hit.collider))
+                continue;
+
+            ShootableButton button = hit.collider.GetComponent<ShootableButton>();
+
+            if (button != null)
+            {
+                distance = hit.distance;
+                return button;
+            }
+
+            if (!hit.collider.isTrigger)
+                return null;
+        }
+
+        return null;
+    }
+
     public void Shoot()
     {
         if (nozzle == null || laser == null)
@@ -219,6 +281,23 @@ public class PistolShooter : MonoBehaviour
         Vector3 start = nozzle.position;
         Vector3 direction = LaserDirection();
 
+        // Botons de la UI (panell final): es premen disparant-los.
+        float buttonDistance;
+        ShootableButton uiButton = FindButton(start, direction, out buttonDistance);
+
+        if (uiButton != null)
+        {
+            laserLength = buttonDistance;
+            laserTimer = laserDuration;
+            laser.enabled = true;
+
+            if (pistolGrab != null)
+                pistolGrab.Vibrate();
+
+            uiButton.Press();
+            return;
+        }
+
         CubeExplode target = FindTarget(start, direction, out laserLength);
 
         if (target != null)
@@ -226,7 +305,7 @@ public class PistolShooter : MonoBehaviour
             if (debugLogs)
                 Debug.Log("[Shooter] Cub tocat: " + target.name);
 
-            if (target.BreakCube() && pistolGrab != null)
+            if (target.BreakCube(direction) && pistolGrab != null)
                 pistolGrab.Vibrate();
         }
         else
@@ -269,7 +348,7 @@ public class PistolShooter : MonoBehaviour
         Vector3 start = nozzle.position;
         Vector3 direction = LaserDirection();
 
-        UpdateAimLine(start, direction);
+        UpdateCrosshair(start, direction);
 
         if (laser == null || !laser.enabled)
             return;
@@ -292,28 +371,24 @@ public class PistolShooter : MonoBehaviour
         laser.SetPosition(1, start + direction * laserLength);
     }
 
-    private void UpdateAimLine(Vector3 start, Vector3 direction)
+    private void UpdateCrosshair(Vector3 start, Vector3 direction)
     {
-        if (aimLine == null)
+        if (crosshair == null)
             return;
 
-        bool visible = showAimLine && (pistolGrab == null || pistolGrab.IsHeld);
-        aimLine.enabled = visible;
+        bool visible = showCrosshair && (pistolGrab == null || pistolGrab.IsHeld);
+        crosshair.gameObject.SetActive(visible);
 
         if (!visible)
             return;
 
-        float distance;
-        CubeExplode target = FindTarget(start, direction, out distance);
+        crosshair.SetPositionAndRotation(start + direction * crosshairDistance, Quaternion.LookRotation(direction));
+    }
 
-        float length = target != null ? distance : Mathf.Min(distance, aimLineLength);
-        Color color = target != null ? aimLineOnTargetColor : aimLineColor;
-
-        aimLine.startColor = color;
-        // Si no apunta a res, la línia s'esvaeix cap al final.
-        aimLine.endColor = new Color(color.r, color.g, color.b, target != null ? color.a : 0f);
-        aimLine.SetPosition(0, start);
-        aimLine.SetPosition(1, start + direction * length);
+    private void OnDestroy()
+    {
+        if (crosshair != null)
+            Destroy(crosshair.gameObject);
     }
 
     private void OnDisable()
@@ -323,8 +398,8 @@ public class PistolShooter : MonoBehaviour
         if (laser != null)
             laser.enabled = false;
 
-        if (aimLine != null)
-            aimLine.enabled = false;
+        if (crosshair != null)
+            crosshair.gameObject.SetActive(false);
 
         if (shotVibrationTimer > 0f && pistolGrab != null)
             OVRInput.SetControllerVibration(0f, 0f, pistolGrab.Controller);

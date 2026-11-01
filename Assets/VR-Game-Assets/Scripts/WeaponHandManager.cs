@@ -15,6 +15,13 @@ public class WeaponHandManager : MonoBehaviour
     public bool allowButtonSwap = true;
     public OVRInput.Button swapButton = OVRInput.Button.Two;
 
+    [Header("So en canviar de mà")]
+    // So que sona quan les armes s'intercanvien (switchSound).
+    public AudioClip switchSound;
+    [Range(0f, 1f)] public float switchVolume = 1f;
+
+    private AudioSource audioSource;
+
     public bool debugLogs = true;
 
     private bool appliedPistolInRightHand;
@@ -28,20 +35,31 @@ public class WeaponHandManager : MonoBehaviour
         if (sword == null)
             sword = FindFirstObjectByType<SwordHandGrab>();
 
-        Apply();
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f; // So "a l'orella", no posicional.
+
+        if (switchSound == null)
+            Debug.LogWarning("[Weapons] Falta assignar el Switch Sound.");
+
+        Apply(false);
     }
 
     private void Update()
     {
-        if (allowButtonSwap && OVRInput.GetDown(swapButton))
+        // Quan s'acaba la partida, el botó B serveix per tornar al lobby.
+        bool gameOver = ScoreManager.Instance != null && ScoreManager.Instance.IsGameOver;
+
+        if (allowButtonSwap && !gameOver && OVRInput.GetDown(swapButton))
             SwapHands();
 
         // Si es canvia la casella a l'Inspector durant el joc.
         if (pistolInRightHand != appliedPistolInRightHand)
-            Apply();
+            Apply(true);
     }
 
-    private void Apply()
+    // playSound: fals a l'inici de la partida (no ha canviat res).
+    private void Apply(bool playSound)
     {
         appliedPistolInRightHand = pistolInRightHand;
 
@@ -56,12 +74,15 @@ public class WeaponHandManager : MonoBehaviour
 
         if (debugLogs)
             Debug.Log("[Weapons] Pistola a la mà " + (pistolInRightHand ? "dreta" : "esquerra") + ".");
+
+        if (playSound && switchSound != null && audioSource != null)
+            audioSource.PlayOneShot(switchSound, switchVolume);
     }
 
     public void SwapHands()
     {
         pistolInRightHand = !pistolInRightHand;
-        Apply();
+        Apply(true);
     }
 
     // Per al cub de l'onada 3: intercanvia les mans durant uns segons.

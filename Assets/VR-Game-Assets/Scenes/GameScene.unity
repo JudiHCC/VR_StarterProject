@@ -1523,6 +1523,8 @@ MonoBehaviour:
   pistolInRightHand: 1
   allowButtonSwap: 1
   swapButton: 2
+  switchSound: {fileID: 8300000, guid: 12e12774d5d492e4b9d22c83cb4c2142, type: 3}
+  switchVolume: 1
   debugLogs: 1
 --- !u!1 &1221630781
 GameObject:
