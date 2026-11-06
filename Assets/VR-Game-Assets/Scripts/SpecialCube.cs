@@ -25,7 +25,6 @@ public class SpecialCube : MonoBehaviour
     public float slowMultiplier = 0.5f;
     public float fastMultiplier = 1.35f;
 
-    [Header("Outline")]
     public float outlineScale = 1.1f;
     public float blinkSpeed = 3f;
     [Range(0f, 1f)] public float glowWhiteness = 0.6f;

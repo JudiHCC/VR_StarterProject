@@ -13,11 +13,9 @@ public abstract class HandGrabBase : MonoBehaviour
 
     public bool alwaysHeld = true;
 
-    [Header("Offset a la mà per defecte (espasa: esquerra / pistola: dreta)")]
     public Vector3 gripPositionOffset = Vector3.zero;
     public Vector3 gripEulerOffset = Vector3.zero;
 
-    [Header("Offset a l'altra mà (espasa: dreta / pistola: esquerra)")]
     public bool customOtherHandOffset = true;
     public bool mirrorOtherHand = true;
     public Vector3 otherHandPositionOffset = Vector3.zero;

@@ -5,7 +5,6 @@ public class CubeExplode : MonoBehaviour
     public GameObject pieces;
     public GameObject mainCube;
 
-    [Header("Física de les peces")]
     public float pieceLifetime = 1.5f;
     public float explosionSpeed = 1.5f;
     public float shotPush = 2.5f;

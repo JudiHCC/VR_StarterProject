@@ -10,36 +10,29 @@ public class ScoreManager : MonoBehaviour
 
     public static ScoreManager Instance { get; private set; }
 
-    [Header("Partida")]
     public float gameDuration = 180f;
     public bool endlessMode = false;
 
-    [Header("Punts")]
     public int gunCubePoints = 100;
     public int swordCubePoints = 100;
     public int missedCubePenalty = 50;
     public bool allowNegativeScore = false;
 
-    [Header("UI_Timer")]
     public TMP_Text timeText;
     public Image timerFill;
     public Color wave1Color = new Color(0.2f, 0.85f, 0.25f);
     public Color wave2Color = new Color(1f, 0.85f, 0.1f);
     public Color wave3Color = new Color(0.95f, 0.2f, 0.15f);
 
-    [Header("UI_ScoreCurrent")]
     public TMP_Text currentScoreText;
 
-    [Header("UI_ScoreFinal")]
     public GameObject finalPanel;
     public TMP_Text finalScoreText;
     public TMP_Text highScoreText;
 
-    [Header("Altres")]
     public GameObject[] hideOnGameOver;
     public int lobbySceneIndex = 0;
 
-    [Header("Tornar a jugar")]
     public OVRInput.Button restartButtonRight = OVRInput.Button.One;
     public OVRInput.Button restartButtonLeft = OVRInput.Button.Three;
     public OVRInput.Button lobbyButtonRight = OVRInput.Button.Two;

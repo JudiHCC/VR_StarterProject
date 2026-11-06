@@ -10,7 +10,6 @@ public class WeaponHandManager : MonoBehaviour
     public bool allowButtonSwap = true;
     public OVRInput.Button swapButton = OVRInput.Button.Two;
 
-    [Header("So en canviar de mà")]
     public AudioClip switchSound;
     [Range(0f, 1f)] public float switchVolume = 1f;
 

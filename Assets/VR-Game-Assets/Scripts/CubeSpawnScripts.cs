@@ -14,23 +14,19 @@ public class CubeSpawnScripts : MonoBehaviour
     public GameObject gunCubePrefab;
     public GameObject swordCubePrefab;
 
-    [Header("Durada de les onades (segons)")]
     public float wave1Duration = 20f;
     public float wave2Duration = 40f;
 
-    [Header("Onada 1: Introducció")]
     public Wave1CubeType wave1CubeType = Wave1CubeType.Sword;
     public float wave1MinDelay = 3f;
     public float wave1MaxDelay = 4f;
     public float wave1SpeedLevel = 1f;
 
-    [Header("Onada 2: Combinació bàsica")]
     public float wave2MinDelay = 2f;
     public float wave2MaxDelay = 3f;
     public float wave2SpeedLevel = 1.3f;
     [Range(0f, 1f)] public float wave2DoubleChance = 0.3f;
 
-    [Header("Onada 3: Increment de ritme i cubs nous")]
     public float wave3MinDelay = 1.2f;
     public float wave3MaxDelay = 2f;
     public float wave3StartSpeedLevel = 1.8f;
@@ -39,7 +35,6 @@ public class CubeSpawnScripts : MonoBehaviour
     [Range(0f, 1f)] public float wave3DoubleChance = 0.4f;
     [Range(0f, 1f)] public float specialCubeChance = 0.25f;
 
-    [Header("Cubs especials")]
     public float slowMultiplier = 0.5f;
     public float fastMultiplier = 1.35f;
 

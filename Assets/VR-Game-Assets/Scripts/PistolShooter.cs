@@ -14,16 +14,13 @@ public class PistolShooter : MonoBehaviour
     public float laserDuration = 0.12f;
     public float fireCooldown = 0.15f;
 
-    [Header("Ajuda a apuntar")]
     public float aimAssistRadius = 0.03f;
 
-    [Header("Mirilla")]
     public float crosshairDistance = 1.2f;
     public float crosshairRadius = 0.015f;
     public float crosshairWidth = 0.0025f;
     public Color crosshairColor = new Color(1f, 1f, 1f, 0.8f);
 
-    [Header("Vibració")]
     [Range(0f, 1f)] public float shotVibrationFrequency = 1f;
     [Range(0f, 1f)] public float shotVibrationAmplitude = 1f;
     public float shotVibrationDuration = 0.2f;

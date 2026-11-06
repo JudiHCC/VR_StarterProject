@@ -1,7 +1,3 @@
-// Outline dels cubs especials (tècnica "inverted hull"):
-// es pinta una còpia del cub una mica més gran, d'un sol color
-// i només per darrere (Cull Front), així només es veu la vora.
-// Està a Resources perquè s'inclogui a la build i es pugui carregar des del codi.
 Shader "Custom/SpecialCubeOutline"
 {
     Properties

@@ -9,7 +9,6 @@ public class SwordCubeScript : MonoBehaviour
     public AudioClip sliceSound;
     [Range(0f, 1f)] public float sliceVolume = 1f;
 
-    [Header("Tall amb EzySlice")]
     public bool useEzySlice = true;
     public Material crossSectionMaterial;
     public float pieceLifetime = 3f;
