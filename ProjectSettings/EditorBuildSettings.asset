@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/VR-Game-Assets/Scenes/GameScene.unity
     guid: 8b0418fd49eb1d24fa8f70f9bf0642dd
+  - enabled: 1
+    path: Assets/VR-Game-Assets/Scenes/Game2Scene.unity
+    guid: 98c000f4a73ba5448954801d6a62b003
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: a8da657471e1da74cbcb2b43dc718156, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}

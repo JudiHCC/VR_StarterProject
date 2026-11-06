@@ -1,17 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-// Tipus de cub especial de l'onada 3.
 public enum SpecialCubeEffect
 {
-    SlowDown,   // El joc va més lent mentre el cub existeix.
-    SpeedUp,    // El joc va més ràpid mentre el cub existeix.
-    SwapHands   // L'espasa i la pistola s'intercanvien de mà mentre el cub existeix.
+    SlowDown,
+    SpeedUp,
+    SwapHands
 }
 
-// Velocitat global del joc (cubs i ritme d'aparició).
-// No fem servir Time.timeScale perquè en VR alentiria també
-// la física de les mans, les vibracions i el temporitzador.
 public static class GameSpeed
 {
     public static float Multiplier = 1f;
@@ -22,34 +18,34 @@ public static class GameSpeed
     }
 }
 
-// Va a un cub (GunCube o SwordCube) per convertir-lo en especial.
-// El CubeSpawnScripts l'afegeix en temps d'execució a l'onada 3.
-// L'efecte comença quan apareix el cub i s'acaba quan es destrueix
-// (tant si el trenca el jugador com si arriba al CubeKiller).
 public class SpecialCube : MonoBehaviour
 {
     public SpecialCubeEffect effect = SpecialCubeEffect.SlowDown;
 
-    // Multiplicadors de velocitat dels efectes.
     public float slowMultiplier = 0.5f;
     public float fastMultiplier = 1.35f;
 
     [Header("Outline")]
-    // Com més gran, més gruixut l'outline (1.1 = un 10% més gran que el cub).
     public float outlineScale = 1.1f;
+    public float blinkSpeed = 3f;
+    [Range(0f, 1f)] public float glowWhiteness = 0.6f;
+    public float pulseThickness = 0.05f;
 
     private bool active = false;
+    private Material outlineMaterial;
+    private Color baseColor;
+    private readonly List<Transform> outlines = new List<Transform>();
+    private readonly List<Vector3> outlineCenters = new List<Vector3>();
 
     private static Shader outlineShader;
 
-    // Color de l'outline de cada efecte.
     public static Color ColorFor(SpecialCubeEffect effect)
     {
         switch (effect)
         {
-            case SpecialCubeEffect.SlowDown: return new Color(0.2f, 0.6f, 1f);   // Blau
-            case SpecialCubeEffect.SpeedUp: return new Color(1f, 0.2f, 0.15f);   // Vermell
-            default: return new Color(1f, 0.85f, 0.1f);                          // Groc
+            case SpecialCubeEffect.SlowDown: return new Color(0.2f, 0.6f, 1f);
+            case SpecialCubeEffect.SpeedUp: return new Color(1f, 0.2f, 0.15f);
+            default: return new Color(1f, 0.85f, 0.1f);
         }
     }
 
@@ -61,37 +57,25 @@ public class SpecialCube : MonoBehaviour
         SpecialCubeEffects.Add(this);
     }
 
-    // Còpia del cub una mica més gran, només amb les cares de darrere,
-    // perquè es vegi una vora de color al voltant.
     private void CreateOutline(Color color)
     {
         if (outlineShader == null)
             outlineShader = Resources.Load<Shader>("SpecialCubeOutline");
 
-        if (outlineShader == null)
-        {
-            Debug.LogWarning("[Special] No trobo el shader SpecialCubeOutline a Resources.");
-            return;
-        }
-
-        Material outlineMaterial = new Material(outlineShader);
+        baseColor = color;
+        outlineMaterial = new Material(outlineShader);
         outlineMaterial.color = color;
 
-        // Només les malles visibles ara (al GunCube, el cub sencer i no les peces).
         foreach (MeshFilter filter in GetComponentsInChildren<MeshFilter>(false))
         {
-            MeshRenderer rend = filter.GetComponent<MeshRenderer>();
-
-            if (filter.sharedMesh == null || rend == null || !rend.enabled)
-                continue;
-
             GameObject outline = new GameObject("Outline");
             outline.transform.SetParent(filter.transform, false);
 
-            // Escalem des del centre de la malla perquè la vora quedi igual a tots els costats.
             Vector3 center = filter.sharedMesh.bounds.center;
             outline.transform.localPosition = center * (1f - outlineScale);
             outline.transform.localScale = Vector3.one * outlineScale;
+            outlines.Add(outline.transform);
+            outlineCenters.Add(center);
 
             outline.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
 
@@ -102,9 +86,22 @@ public class SpecialCube : MonoBehaviour
         }
     }
 
-    // Cridat quan el jugador trenca el cub (SwordCubeScript i CubeExplode).
-    // El GunCube tarda uns segons a desaparèixer per l'animació,
-    // però l'efecte s'acaba en el moment de trencar-lo.
+    private void Update()
+    {
+        float glow = (Mathf.Sin(Time.time * blinkSpeed * Mathf.PI * 2f) + 1f) * 0.5f;
+
+        Color bright = Color.Lerp(baseColor, Color.white, glowWhiteness);
+        outlineMaterial.color = Color.Lerp(baseColor, bright, glow);
+
+        float scale = outlineScale + pulseThickness * glow;
+
+        for (int i = 0; i < outlines.Count; i++)
+        {
+            outlines[i].localScale = Vector3.one * scale;
+            outlines[i].localPosition = outlineCenters[i] * (1f - scale);
+        }
+    }
+
     public void End()
     {
         if (!active)
@@ -120,10 +117,8 @@ public class SpecialCube : MonoBehaviour
     }
 }
 
-// Porta el compte dels cubs especials que hi ha ara a l'escena.
 public static class SpecialCubeEffects
 {
-    // Cubs de velocitat vius, en ordre d'aparició: mana el més nou.
     private static readonly List<SpecialCube> speedCubes = new List<SpecialCube>();
     private static int swapCount = 0;
     private static bool handsSwapped = false;
@@ -136,13 +131,11 @@ public static class SpecialCubeEffects
             case SpecialCubeEffect.SpeedUp:
                 speedCubes.Add(cube);
                 UpdateSpeed();
-                Debug.Log("[Special] Apareix cub " + (cube.effect == SpecialCubeEffect.SlowDown ? "lent" : "ràpid") + ".");
                 break;
 
             case SpecialCubeEffect.SwapHands:
                 swapCount++;
                 UpdateSwap();
-                Debug.Log("[Special] Apareix cub d'intercanvi: armes canviades.");
                 break;
         }
     }
@@ -166,8 +159,6 @@ public static class SpecialCubeEffects
 
     private static void UpdateSpeed()
     {
-        speedCubes.RemoveAll(c => c == null);
-
         if (speedCubes.Count == 0)
         {
             GameSpeed.Reset();
@@ -181,7 +172,6 @@ public static class SpecialCubeEffects
             : newest.fastMultiplier;
     }
 
-    // Les armes queden canviades mentre hi hagi algun cub d'intercanvi viu.
     private static void UpdateSwap()
     {
         bool shouldSwap = swapCount > 0;
@@ -196,11 +186,8 @@ public static class SpecialCubeEffects
 
         handsSwapped = shouldSwap;
         manager.SwapHands();
-
-        Debug.Log("[Special] Armes " + (shouldSwap ? "intercanviades." : "tornen a la seva mà."));
     }
 
-    // En començar o acabar una partida tot torna a la normalitat.
     public static void ResetAll()
     {
         speedCubes.Clear();
